@@ -155,6 +155,10 @@
       <div class="sub-timer-label">Next sub rotation</div>
       <div id="sub-timer" class="sub-timer">3:00</div>
       <div id="rotation-label" class="rotation-num"></div>
+      <div class="game-controls" style="margin-top:8px">
+        <button id="btn-sub-pause" class="btn sm secondary" onclick="toggleSubPause()">Pause</button>
+        <button class="btn sm secondary" onclick="resetSubTimer()">Reset</button>
+      </div>
     </div>
 
     <div id="swap-banner" class="swap-banner">SWAP TIME</div>
@@ -221,6 +225,7 @@ let gameSecondsLeft = 0;
 let half = 1;           // 1, 2
 let gamePhase = 'pre';  // pre, playing, halftime, fulltime
 let gameInterval = null;
+let subPaused = false;
 let swapMode = false;
 let selectedOn = new Set();
 let selectedOff = new Set();
@@ -353,6 +358,9 @@ function renderGame() {
 
   document.getElementById('swap-banner').classList.toggle('active', swapMode);
   document.getElementById('swap-hint').classList.toggle('active', swapMode);
+
+  // Sub pause button label
+  document.getElementById('btn-sub-pause').textContent = subPaused ? 'Resume' : 'Pause';
 }
 
 // --- Game clock controls ---
@@ -390,6 +398,7 @@ function start2ndHalf() {
   subSecondsLeft = rotationMinutes * 60;
   rotation = 0;
   swapMode = false;
+  subPaused = false;
   selectedOn.clear();
   selectedOff.clear();
   gamePhase = 'playing';
@@ -412,6 +421,7 @@ function resetHalf() {
   gameSecondsLeft = halfMinutes * 60;
   subSecondsLeft = rotationMinutes * 60;
   swapMode = false;
+  subPaused = false;
   selectedOn.clear();
   selectedOff.clear();
   renderGame();
@@ -426,8 +436,8 @@ function tick() {
   gameSecondsLeft--;
   updateGameClockDisplay();
 
-  // Sub timer only ticks when not in swap mode
-  if (!swapMode) {
+  // Sub timer only ticks when not paused and not in swap mode
+  if (!swapMode && !subPaused) {
     subSecondsLeft--;
     updateSubTimerDisplay();
   }
@@ -507,6 +517,22 @@ function doneSwapping() {
   selectedOn.clear();
   selectedOff.clear();
   subSecondsLeft = rotationMinutes * 60;
+  subPaused = false;
+  updateSubTimerDisplay();
+  renderGame();
+}
+
+function toggleSubPause() {
+  subPaused = !subPaused;
+  renderGame();
+}
+
+function resetSubTimer() {
+  subSecondsLeft = rotationMinutes * 60;
+  subPaused = false;
+  swapMode = false;
+  selectedOn.clear();
+  selectedOff.clear();
   updateSubTimerDisplay();
   renderGame();
 }
