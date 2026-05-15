@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Subs</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  .page { display: none; padding: 16px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  nav {
+    display: flex;
+    background: #16213e;
+    border-bottom: 2px solid #0f3460;
+  }
+  nav button {
+    flex: 1; padding: 14px; background: none; border: none; color: #888;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+  }
+  nav button.active { color: #e94560; border-bottom: 3px solid #e94560; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .add-row input {
+    flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #0f3460;
+    background: #16213e; color: #eee; font-size: 16px;
+  }
+  .add-row input::placeholder { color: #666; }
+  .add-row button, .btn {
+    padding: 12px 20px; border-radius: 8px; border: none;
+    background: #e94560; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn.sm { padding: 8px 14px; font-size: 14px; min-width: 0; }
+  .btn.secondary { background: #0f3460; }
+  .btn.go { background: #4ecca3; color: #1a1a2e; }
+  .player-list { list-style: none; }
+  .player-list li {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; margin-bottom: 8px; background: #16213e;
+    border-radius: 8px; font-size: 18px;
+  }
+  .player-list li button {
+    background: none; border: none; color: #e94560; font-size: 22px;
+    cursor: pointer; padding: 4px 8px;
+  }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; margin-bottom: 8px; font-size: 16px;
+  }
+  .setting-row input[type="number"] {
+    padding: 10px; border-radius: 8px; border: 2px solid #0f3460;
+    background: #16213e; color: #eee; font-size: 16px; width: 80px;
+    text-align: center;
+  }
+  .section-label { color: #888; font-size: 13px; text-transform: uppercase;
+    letter-spacing: 1px; margin: 20px 0 10px; }
+
+  /* Game clock */
+  .game-clock-wrap {
+    background: #16213e; border-radius: 12px; padding: 16px;
+    margin-bottom: 12px; text-align: center;
+  }
+  .half-label { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #888; }
+  .game-clock {
+    font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .game-clock.halftime { color: #f0a500; }
+  .game-clock.fulltime { color: #e94560; }
+  .game-controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+
+  /* Sub timer */
+  .sub-timer-wrap { text-align: center; padding: 10px 0; }
+  .sub-timer-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+  .sub-timer {
+    font-size: 48px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: #eee; line-height: 1.1;
+  }
+  .sub-timer.warning { color: #f0a500; }
+  .sub-timer.urgent { color: #e94560; animation: pulse 0.5s ease-in-out infinite alternate; }
+  @keyframes pulse { to { opacity: 0.4; } }
+  .rotation-num { color: #888; font-size: 14px; margin-top: 4px; }
+
+  .swap-banner {
+    text-align: center; padding: 10px; margin-bottom: 12px;
+    background: #e94560; border-radius: 8px; font-weight: 700;
+    font-size: 18px; animation: pulse 0.6s ease-in-out infinite alternate;
+    display: none;
+  }
+  .swap-banner.active { display: block; }
+  .swap-hint {
+    text-align: center; color: #888; font-size: 13px; margin-bottom: 12px;
+    display: none;
+  }
+  .swap-hint.active { display: block; }
+  .swap-controls { display: flex; gap: 10px; justify-content: center; margin: 10px 0; }
+  .group { margin-bottom: 20px; }
+  .group-header {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+    color: #888; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .group-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.on { background: #4ecca3; }
+  .dot.off { background: #e94560; }
+  .player-card {
+    padding: 14px 16px; margin-bottom: 6px; border-radius: 8px;
+    font-size: 20px; font-weight: 500; cursor: pointer;
+    transition: transform 0.1s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .player-card:active { transform: scale(0.97); }
+  .player-card.on { background: #1b4332; border-left: 4px solid #4ecca3; }
+  .player-card.off { background: #3d1228; border-left: 4px solid #e94560; }
+  .player-card.selected { outline: 3px solid #f0a500; outline-offset: -3px; background: #3a3a00; }
+  .player-card .time-played {
+    float: right; font-size: 13px; color: #888; font-weight: 400; margin-top: 4px;
+  }
+  .flash { animation: flashBg 0.4s ease 3; }
+  @keyframes flashBg { 50% { background: #e94560; } }
+  .empty-msg { color: #666; text-align: center; padding: 40px 0; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button id="nav-game" class="active" onclick="showPage('game')">Game</button>
+  <button id="nav-settings" onclick="showPage('settings')">Settings</button>
+</nav>
+
+<!-- GAME PAGE -->
+<div id="page-game" class="page active">
+  <div id="game-empty" class="empty-msg">Add players in Settings to get started</div>
+  <div id="game-content" style="display:none">
+
+    <!-- Game clock -->
+    <div class="game-clock-wrap">
+      <div id="half-label" class="half-label">1st Half</div>
+      <div id="game-clock" class="game-clock">15:00</div>
+      <div class="game-controls">
+        <button id="btn-game" class="btn sm" onclick="toggleGame()">Start</button>
+        <button id="btn-game-reset" class="btn sm secondary" onclick="resetHalf()">Reset Half</button>
+      </div>
+    </div>
+
+    <!-- Sub rotation timer -->
+    <div class="sub-timer-wrap">
+      <div class="sub-timer-label">Next sub rotation</div>
+      <div id="sub-timer" class="sub-timer">3:00</div>
+      <div id="rotation-label" class="rotation-num"></div>
+    </div>
+
+    <div id="swap-banner" class="swap-banner">SWAP TIME</div>
+    <div id="swap-hint" class="swap-hint">Tap players to come off and subs to come on, then hit Swap</div>
+    <div class="swap-controls">
+      <button id="btn-swap" class="btn go" onclick="doSwap()" style="display:none">Swap</button>
+      <button id="btn-done" class="btn go" onclick="doneSwapping()" style="display:none">Done</button>
+    </div>
+
+    <div class="group">
+      <div class="group-header"><span class="dot on"></span> On Pitch</div>
+      <div id="list-on"></div>
+    </div>
+    <div class="group">
+      <div class="group-header"><span class="dot off"></span> Subs</div>
+      <div id="list-off"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div id="page-settings" class="page">
+  <div class="section-label">Players</div>
+  <div class="add-row">
+    <input id="name-input" type="text" placeholder="Player name" autocomplete="off"
+           onkeydown="if(event.key==='Enter')addPlayer()">
+    <button onclick="addPlayer()">Add</button>
+  </div>
+  <ul id="player-list" class="player-list"></ul>
+
+  <div class="section-label">On Pitch</div>
+  <div class="setting-row">
+    <span>Players on pitch at once</span>
+    <input id="on-pitch-count" type="number" min="1" max="20" value="4"
+           onchange="saveSettings()">
+  </div>
+
+  <div class="section-label">Half length</div>
+  <div class="setting-row">
+    <span>Minutes per half</span>
+    <input id="half-minutes" type="number" min="1" max="45" value="15"
+           onchange="saveSettings()">
+  </div>
+
+  <div class="section-label">Rotation interval</div>
+  <div class="setting-row">
+    <span>Minutes per rotation</span>
+    <input id="rotation-minutes" type="number" min="1" max="30" value="3"
+           onchange="saveSettings()">
+  </div>
+</div>
+
+<script>
+// --- State ---
+let players = [];
+let onPitchCount = 4;
+let halfMinutes = 15;
+let rotationMinutes = 3;
+let onPitch = [];
+let subs = [];
+let rotation = 0;
+let subSecondsLeft = 0;
+let gameSecondsLeft = 0;
+let half = 1;           // 1, 2
+let gamePhase = 'pre';  // pre, playing, halftime, fulltime
+let gameInterval = null;
+let swapMode = false;
+let selectedOn = new Set();
+let selectedOff = new Set();
+let playTime = {};
+
+// --- Persistence ---
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('footysub'));
+    if (d) {
+      players = d.players || [];
+      onPitchCount = d.onPitchCount || 4;
+      halfMinutes = d.halfMinutes || 15;
+      rotationMinutes = d.rotationMinutes || 3;
+    }
+  } catch(e) {}
+}
+
+function save() {
+  localStorage.setItem('footysub', JSON.stringify({
+    players, onPitchCount, halfMinutes, rotationMinutes
+  }));
+}
+
+function saveSettings() {
+  onPitchCount = Math.max(1, parseInt(document.getElementById('on-pitch-count').value) || 4);
+  halfMinutes = Math.max(1, parseInt(document.getElementById('half-minutes').value) || 15);
+  rotationMinutes = Math.max(1, parseInt(document.getElementById('rotation-minutes').value) || 3);
+  save();
+}
+
+// --- Settings page ---
+function renderSettings() {
+  document.getElementById('on-pitch-count').value = onPitchCount;
+  document.getElementById('half-minutes').value = halfMinutes;
+  document.getElementById('rotation-minutes').value = rotationMinutes;
+  const ul = document.getElementById('player-list');
+  ul.innerHTML = players.map((p, i) =>
+    `<li>${esc(p)}<button onclick="removePlayer(${i})">&#x2715;</button></li>`
+  ).join('');
+}
+
+function addPlayer() {
+  const input = document.getElementById('name-input');
+  const name = input.value.trim();
+  if (!name) return;
+  players.push(name);
+  input.value = '';
+  input.focus();
+  save();
+  renderSettings();
+}
+
+function removePlayer(i) {
+  players.splice(i, 1);
+  save();
+  renderSettings();
+}
+
+// --- Game page ---
+function assignPlayers() {
+  const count = Math.min(onPitchCount, players.length);
+  onPitch = players.slice(0, count);
+  subs = players.slice(count);
+}
+
+function renderGame() {
+  const hasPlayers = players.length > 0;
+  document.getElementById('game-empty').style.display = hasPlayers ? 'none' : 'block';
+  document.getElementById('game-content').style.display = hasPlayers ? 'block' : 'none';
+  if (!hasPlayers) return;
+
+  const hasSubs = subs.length > 0;
+
+  // Game clock
+  const halfEl = document.getElementById('half-label');
+  const clockEl = document.getElementById('game-clock');
+  const btnGame = document.getElementById('btn-game');
+  const btnReset = document.getElementById('btn-game-reset');
+
+  clockEl.classList.remove('halftime', 'fulltime');
+  if (gamePhase === 'pre') {
+    halfEl.textContent = '1st Half';
+    btnGame.textContent = 'Start';
+    btnGame.style.display = '';
+    btnReset.textContent = 'Reset Half';
+  } else if (gamePhase === 'playing') {
+    halfEl.textContent = half === 1 ? '1st Half' : '2nd Half';
+    btnGame.textContent = 'Pause';
+    btnGame.style.display = '';
+    btnReset.textContent = 'Reset Half';
+  } else if (gamePhase === 'halftime') {
+    halfEl.textContent = 'Half Time';
+    clockEl.classList.add('halftime');
+    btnGame.textContent = '2nd Half';
+    btnGame.style.display = '';
+    btnReset.textContent = 'New Game';
+  } else if (gamePhase === 'fulltime') {
+    halfEl.textContent = 'Full Time';
+    clockEl.classList.add('fulltime');
+    btnGame.style.display = 'none';
+    btnReset.textContent = 'New Game';
+  }
+  updateGameClockDisplay();
+  updateSubTimerDisplay();
+
+  // Player lists
+  document.getElementById('list-on').innerHTML = onPitch.map((p, i) =>
+    `<div class="player-card on${selectedOn.has(i) ? ' selected' : ''}"
+          onclick="tapOnPitch(${i})">
+      ${esc(p)}<span class="time-played">${fmtTime(playTime[p]||0)}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('list-off').innerHTML = subs.length
+    ? subs.map((p, i) =>
+        `<div class="player-card off${selectedOff.has(i) ? ' selected' : ''}"
+              onclick="tapSub(${i})">
+          ${esc(p)}<span class="time-played">${fmtTime(playTime[p]||0)}</span>
+        </div>`
+      ).join('')
+    : '<div style="color:#666;padding:8px">None</div>';
+
+  const canSwap = selectedOn.size > 0 && selectedOn.size === selectedOff.size;
+  document.getElementById('btn-swap').style.display = canSwap ? '' : 'none';
+  document.getElementById('btn-done').style.display = swapMode ? '' : 'none';
+
+  document.getElementById('rotation-label').textContent =
+    hasSubs ? `Rotation ${rotation}` : 'No subs needed';
+
+  document.getElementById('swap-banner').classList.toggle('active', swapMode);
+  document.getElementById('swap-hint').classList.toggle('active', swapMode);
+}
+
+// --- Game clock controls ---
+function toggleGame() {
+  if (gamePhase === 'pre') {
+    startGame();
+  } else if (gamePhase === 'playing') {
+    pauseGame();
+  } else if (gamePhase === 'halftime') {
+    start2ndHalf();
+  }
+}
+
+function startGame() {
+  if (players.length === 0) return;
+  gamePhase = 'playing';
+  half = 1;
+  gameInterval = setInterval(tick, 1000);
+  renderGame();
+}
+
+function pauseGame() {
+  gamePhase = 'pre'; // reuse pre as paused state
+  clearInterval(gameInterval);
+  gameInterval = null;
+  // Keep half and seconds where they are
+  renderGame();
+  // Fix button — show Start (resume)
+  document.getElementById('btn-game').textContent = 'Start';
+}
+
+function start2ndHalf() {
+  half = 2;
+  gameSecondsLeft = halfMinutes * 60;
+  subSecondsLeft = rotationMinutes * 60;
+  rotation = 0;
+  swapMode = false;
+  selectedOn.clear();
+  selectedOff.clear();
+  gamePhase = 'playing';
+  gameInterval = setInterval(tick, 1000);
+  renderGame();
+}
+
+function resetHalf() {
+  clearInterval(gameInterval);
+  gameInterval = null;
+  if (gamePhase === 'halftime' || gamePhase === 'fulltime') {
+    // New game
+    half = 1;
+    rotation = 0;
+    playTime = {};
+    players.forEach(p => playTime[p] = 0);
+    assignPlayers();
+  }
+  gamePhase = 'pre';
+  gameSecondsLeft = halfMinutes * 60;
+  subSecondsLeft = rotationMinutes * 60;
+  swapMode = false;
+  selectedOn.clear();
+  selectedOff.clear();
+  renderGame();
+}
+
+// --- Tick ---
+function tick() {
+  // Track play time
+  onPitch.forEach(p => { playTime[p] = (playTime[p] || 0) + 1; });
+
+  // Game clock always ticks
+  gameSecondsLeft--;
+  updateGameClockDisplay();
+
+  // Sub timer only ticks when not in swap mode
+  if (!swapMode) {
+    subSecondsLeft--;
+    updateSubTimerDisplay();
+  }
+
+  // Periodic re-render for play times
+  if (gameSecondsLeft % 15 === 0) renderGame();
+
+  // Check game clock first
+  if (gameSecondsLeft <= 0) {
+    clearInterval(gameInterval);
+    gameInterval = null;
+    swapMode = false;
+    selectedOn.clear();
+    selectedOff.clear();
+    if (half === 1) {
+      gamePhase = 'halftime';
+      beep();
+    } else {
+      gamePhase = 'fulltime';
+      beep();
+    }
+    renderGame();
+    return;
+  }
+
+  // Check sub timer
+  if (subSecondsLeft <= 0 && !swapMode) {
+    if (subs.length > 0) {
+      enterSwapMode();
+    } else {
+      subSecondsLeft = rotationMinutes * 60;
+      updateSubTimerDisplay();
+    }
+  }
+}
+
+// --- Sub swap logic ---
+function tapOnPitch(i) {
+  if (selectedOn.has(i)) selectedOn.delete(i);
+  else selectedOn.add(i);
+  renderGame();
+}
+
+function tapSub(i) {
+  if (selectedOff.has(i)) selectedOff.delete(i);
+  else selectedOff.add(i);
+  renderGame();
+}
+
+function doSwap() {
+  if (selectedOn.size === 0 || selectedOn.size !== selectedOff.size) return;
+  const onIdxs = [...selectedOn].sort((a, b) => a - b);
+  const offIdxs = [...selectedOff].sort((a, b) => a - b);
+  for (let i = 0; i < onIdxs.length; i++) {
+    const tmp = onPitch[onIdxs[i]];
+    onPitch[onIdxs[i]] = subs[offIdxs[i]];
+    subs[offIdxs[i]] = tmp;
+  }
+  selectedOn.clear();
+  selectedOff.clear();
+  renderGame();
+}
+
+function enterSwapMode() {
+  swapMode = true;
+  selectedOn.clear();
+  selectedOff.clear();
+  rotation++;
+  renderGame();
+  beep();
+  document.getElementById('sub-timer').classList.add('flash');
+  setTimeout(() => document.getElementById('sub-timer').classList.remove('flash'), 1500);
+}
+
+function doneSwapping() {
+  swapMode = false;
+  selectedOn.clear();
+  selectedOff.clear();
+  subSecondsLeft = rotationMinutes * 60;
+  updateSubTimerDisplay();
+  renderGame();
+}
+
+// --- Display helpers ---
+function updateGameClockDisplay() {
+  const el = document.getElementById('game-clock');
+  const m = Math.floor(gameSecondsLeft / 60);
+  const s = gameSecondsLeft % 60;
+  el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function updateSubTimerDisplay() {
+  const el = document.getElementById('sub-timer');
+  const m = Math.floor(subSecondsLeft / 60);
+  const s = subSecondsLeft % 60;
+  el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  el.classList.remove('warning', 'urgent');
+  if (subSecondsLeft <= 10) el.classList.add('urgent');
+  else if (subSecondsLeft <= 30) el.classList.add('warning');
+}
+
+// --- Audio ---
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.2, 0.4].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.3;
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.12);
+    });
+  } catch(e) {}
+}
+
+// --- Navigation ---
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  if (page === 'game') {
+    if (gamePhase === 'pre' && rotation === 0 && half === 1) assignPlayers();
+    renderGame();
+  }
+  if (page === 'settings') renderSettings();
+}
+
+// --- Util ---
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// --- Init ---
+load();
+gameSecondsLeft = halfMinutes * 60;
+subSecondsLeft = rotationMinutes * 60;
+players.forEach(p => playTime[p] = 0);
+assignPlayers();
+renderSettings();
+renderGame();
+</script>
+</body>
+</html>
