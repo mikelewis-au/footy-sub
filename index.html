@@ -191,6 +191,7 @@
     <button onclick="addPlayer()">Add</button>
   </div>
   <ul id="player-list" class="player-list"></ul>
+  <button class="btn secondary" onclick="shufflePlayers()" style="width:100%;margin-bottom:16px">Shuffle Order</button>
 
   <div class="section-label">On Pitch</div>
   <div class="setting-row">
@@ -293,6 +294,12 @@ function addPlayer() {
 
 function removePlayer(i) {
   players.splice(i, 1);
+  save();
+  renderSettings();
+}
+
+function shufflePlayers() {
+  shuffle(players);
   save();
   renderSettings();
 }
