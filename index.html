@@ -458,8 +458,7 @@ function tick() {
     updateSubTimerDisplay();
   }
 
-  // Periodic re-render for play times
-  if (gameSecondsLeft % 15 === 0) renderGame();
+  renderGame();
 
   // Check game clock first
   if (gameSecondsLeft <= 0) {
