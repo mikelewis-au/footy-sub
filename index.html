@@ -215,9 +215,16 @@
 </div>
 
 <script>
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 // --- State ---
 const DEFAULT_PLAYERS = ['Finn', 'Beau', 'Charlie', 'Lawrence', 'Harlan', 'Lachie', 'Jackson'];
-let players = [...DEFAULT_PLAYERS];
+let players = shuffle([...DEFAULT_PLAYERS]);
 let onPitchCount = 4;
 let halfMinutes = 15;
 let rotationMinutes = 3;
