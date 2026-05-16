@@ -216,7 +216,8 @@
 
 <script>
 // --- State ---
-let players = [];
+const DEFAULT_PLAYERS = ['Finn', 'Beau', 'Charlie', 'Lawrence', 'Harlan', 'Lachie', 'Jackson'];
+let players = [...DEFAULT_PLAYERS];
 let onPitchCount = 4;
 let halfMinutes = 15;
 let rotationMinutes = 3;
