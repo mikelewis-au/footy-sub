@@ -123,6 +123,9 @@
   .player-card .time-played {
     float: right; font-size: 13px; color: #888; font-weight: 400; margin-top: 4px;
   }
+  .player-card .stint-time {
+    color: #4ecca3; font-weight: 600; margin-right: 6px;
+  }
   .flash { animation: flashBg 0.4s ease 3; }
   @keyframes flashBg { 50% { background: #e94560; } }
   .empty-msg { color: #666; text-align: center; padding: 40px 0; font-size: 16px; }
@@ -230,6 +233,7 @@ let swapMode = false;
 let selectedOn = new Set();
 let selectedOff = new Set();
 let playTime = {};
+let stintTime = {};  // player -> seconds in current stint on pitch
 
 // --- Persistence ---
 function load() {
@@ -332,11 +336,18 @@ function renderGame() {
   updateGameClockDisplay();
   updateSubTimerDisplay();
 
-  // Player lists
-  document.getElementById('list-on').innerHTML = onPitch.map((p, i) =>
+  // Player lists — sort on-pitch by stint descending (longest on top)
+  const sortedOn = onPitch.map((p, i) => ({ p, i }))
+    .sort((a, b) => (stintTime[b.p] || 0) - (stintTime[a.p] || 0));
+
+  document.getElementById('list-on').innerHTML = sortedOn.map(({ p, i }) =>
     `<div class="player-card on${selectedOn.has(i) ? ' selected' : ''}"
           onclick="tapOnPitch(${i})">
-      ${esc(p)}<span class="time-played">${fmtTime(playTime[p]||0)}</span>
+      ${esc(p)}
+      <span class="time-played">
+        <span class="stint-time">${fmtTime(stintTime[p]||0)}</span>
+        total ${fmtTime(playTime[p]||0)}
+      </span>
     </div>`
   ).join('');
 
@@ -344,7 +355,7 @@ function renderGame() {
     ? subs.map((p, i) =>
         `<div class="player-card off${selectedOff.has(i) ? ' selected' : ''}"
               onclick="tapSub(${i})">
-          ${esc(p)}<span class="time-played">${fmtTime(playTime[p]||0)}</span>
+          ${esc(p)}<span class="time-played">total ${fmtTime(playTime[p]||0)}</span>
         </div>`
       ).join('')
     : '<div style="color:#666;padding:8px">None</div>';
@@ -401,6 +412,7 @@ function start2ndHalf() {
   subPaused = false;
   selectedOn.clear();
   selectedOff.clear();
+  players.forEach(p => stintTime[p] = 0);
   gamePhase = 'playing';
   gameInterval = setInterval(tick, 1000);
   renderGame();
@@ -414,7 +426,8 @@ function resetHalf() {
     half = 1;
     rotation = 0;
     playTime = {};
-    players.forEach(p => playTime[p] = 0);
+    stintTime = {};
+    players.forEach(p => { playTime[p] = 0; stintTime[p] = 0; });
     assignPlayers();
   }
   gamePhase = 'pre';
@@ -429,8 +442,11 @@ function resetHalf() {
 
 // --- Tick ---
 function tick() {
-  // Track play time
-  onPitch.forEach(p => { playTime[p] = (playTime[p] || 0) + 1; });
+  // Track play time and stint time
+  onPitch.forEach(p => {
+    playTime[p] = (playTime[p] || 0) + 1;
+    stintTime[p] = (stintTime[p] || 0) + 1;
+  });
 
   // Game clock always ticks
   gameSecondsLeft--;
@@ -492,9 +508,12 @@ function doSwap() {
   const onIdxs = [...selectedOn].sort((a, b) => a - b);
   const offIdxs = [...selectedOff].sort((a, b) => a - b);
   for (let i = 0; i < onIdxs.length; i++) {
-    const tmp = onPitch[onIdxs[i]];
-    onPitch[onIdxs[i]] = subs[offIdxs[i]];
-    subs[offIdxs[i]] = tmp;
+    const coming = subs[offIdxs[i]];
+    const going = onPitch[onIdxs[i]];
+    onPitch[onIdxs[i]] = coming;
+    subs[offIdxs[i]] = going;
+    stintTime[coming] = 0; // reset stint for player coming on
+    stintTime[going] = 0;
   }
   selectedOn.clear();
   selectedOff.clear();
@@ -597,7 +616,7 @@ function fmtTime(secs) {
 load();
 gameSecondsLeft = halfMinutes * 60;
 subSecondsLeft = rotationMinutes * 60;
-players.forEach(p => playTime[p] = 0);
+players.forEach(p => { playTime[p] = 0; stintTime[p] = 0; });
 assignPlayers();
 renderSettings();
 renderGame();
