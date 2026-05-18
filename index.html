@@ -405,16 +405,16 @@ function startGame() {
   gamePhase = 'playing';
   half = 1;
   gameInterval = setInterval(tick, 1000);
+  requestWakeLock();
   renderGame();
 }
 
 function pauseGame() {
-  gamePhase = 'pre'; // reuse pre as paused state
+  gamePhase = 'pre';
   clearInterval(gameInterval);
   gameInterval = null;
-  // Keep half and seconds where they are
+  releaseWakeLock();
   renderGame();
-  // Fix button — show Start (resume)
   document.getElementById('btn-game').textContent = 'Start';
 }
 
@@ -430,6 +430,7 @@ function start2ndHalf() {
   players.forEach(p => stintTime[p] = 0);
   gamePhase = 'playing';
   gameInterval = setInterval(tick, 1000);
+  requestWakeLock();
   renderGame();
 }
 
@@ -479,6 +480,7 @@ function tick() {
   if (gameSecondsLeft <= 0) {
     clearInterval(gameInterval);
     gameInterval = null;
+    releaseWakeLock();
     swapMode = false;
     selectedOn.clear();
     selectedOff.clear();
@@ -588,7 +590,7 @@ function updateSubTimerDisplay() {
   else if (subSecondsLeft <= 30) el.classList.add('warning');
 }
 
-// --- Audio ---
+// --- Audio + haptics ---
 function beep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -603,7 +605,24 @@ function beep() {
       osc.stop(ctx.currentTime + delay + 0.12);
     });
   } catch(e) {}
+  try { navigator.vibrate([200, 100, 200, 100, 200]); } catch(e) {}
 }
+
+// --- Wake lock ---
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch(e) {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && gamePhase === 'playing') requestWakeLock();
+});
 
 // --- Navigation ---
 function showPage(page) {
